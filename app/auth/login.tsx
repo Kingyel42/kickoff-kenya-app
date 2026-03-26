@@ -1,9 +1,12 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { colors } from "@/constants/colors";
+import { layout, typography } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
 
 export default function LoginScreen() {
@@ -12,14 +15,13 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (loading) return;
+
     setLoading(true);
     setError("");
-    setMessage("");
     const result = await signIn(email, password);
     setLoading(false);
 
@@ -28,35 +30,79 @@ export default function LoginScreen() {
       return;
     }
 
-    if (result.message) {
-      setMessage(result.message);
-    }
-
     router.replace("/(tabs)");
   };
 
   return (
-    <View className="flex-1 justify-center bg-background px-6">
-      <View className="mb-10 items-center gap-2">
-        <Text className="text-[40px]">⚽</Text>
-        <Text className="text-[28px] font-black text-primary">KickOff Kenya</Text>
+    <View style={[layout.screen, styles.screen]}>
+      <View style={styles.hero}>
+        <Text style={styles.logo}>⚽</Text>
+        <Text style={styles.brand}>KickOff Kenya</Text>
+        <Text style={styles.subtitle}>Welcome back</Text>
       </View>
 
-      <View className="gap-4">
-        <Input label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        <View className="gap-2">
-          <Pressable className="self-end">
-            <Text className="text-[13px] font-semibold text-primary">Forgot password?</Text>
-          </Pressable>
-          <Input label="Password" value={password} onChangeText={setPassword} secureTextEntry error={error} />
-        </View>
-        {message ? <Text className="text-[13px] text-primary">{message}</Text> : null}
-        <Button title="Sign In" onPress={handleSubmit} loading={loading} />
-      </View>
+      <Card style={styles.formCard}>
+        <Input
+          autoCapitalize="none"
+          keyboardType="email-address"
+          label="Email"
+          onChangeText={setEmail}
+          value={email}
+        />
+        <Input
+          error={error}
+          label="Password"
+          onChangeText={setPassword}
+          secureTextEntry
+          value={password}
+        />
+        <Button title="Sign In" loading={loading} onPress={handleSubmit} />
+      </Card>
 
-      <Text className="mt-8 text-center text-[14px] text-textSecondary" onPress={() => router.push("/auth/signup")}>
-        Don&apos;t have an account? <Text className="font-bold text-primary">Sign up</Text>
-      </Text>
+      <Pressable onPress={() => router.push("/auth/signup")} style={styles.footerLink}>
+        <Text style={styles.footerText}>
+          Don&apos;t have an account? <Text style={styles.footerStrong}>Sign up</Text>
+        </Text>
+      </Pressable>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    gap: 20,
+  },
+  hero: {
+    alignItems: "center",
+    gap: 8,
+  },
+  logo: {
+    fontSize: 48,
+    textAlign: "center",
+  },
+  brand: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: colors.primary,
+    textAlign: "center",
+  },
+  subtitle: {
+    ...typography.body,
+    textAlign: "center",
+  },
+  formCard: {
+    gap: 14,
+  },
+  footerLink: {
+    alignItems: "center",
+  },
+  footerText: {
+    ...typography.caption,
+  },
+  footerStrong: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+});

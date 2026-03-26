@@ -1,11 +1,13 @@
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { colors } from "@/constants/colors";
+import { layout, typography } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
 import { Position, Profile } from "@/lib/types";
 
@@ -13,28 +15,30 @@ const positions: Position[] = ["Goalkeeper", "Defender", "Midfielder", "Forward"
 const skills: Profile["skill_level"][] = ["Beginner", "Intermediate", "Advanced", "Pro"];
 const cities = ["Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret", "Other"];
 
-const PickerField = ({
+function PickerField({
   label,
   value,
-  onChange,
   options,
+  onChange,
 }: {
   label: string;
   value: string;
-  onChange: (value: string) => void;
   options: string[];
-}) => (
-  <View className="gap-2">
-    <Text className="text-[13px] font-semibold text-textSecondary">{label}</Text>
-    <View className="rounded-button border border-border bg-card">
-      <Picker selectedValue={value} onValueChange={onChange}>
-        {options.map((option) => (
-          <Picker.Item key={option} label={option} value={option} />
-        ))}
-      </Picker>
+  onChange: (value: string) => void;
+}) {
+  return (
+    <View>
+      <Text style={styles.pickerLabel}>{label}</Text>
+      <View style={styles.pickerShell}>
+        <Picker selectedValue={value} onValueChange={onChange}>
+          {options.map((option) => (
+            <Picker.Item key={option} label={option} value={option} />
+          ))}
+        </Picker>
+      </View>
     </View>
-  </View>
-);
+  );
+}
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -50,13 +54,12 @@ export default function SignupScreen() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async () => {
+  const handleSignup = async () => {
     if (loading) return;
 
     setLoading(true);
     setError("");
     setMessage("");
-
     const result = await signUp({ fullName, username, email, password, position, skillLevel, city });
     setLoading(false);
 
@@ -70,38 +73,97 @@ export default function SignupScreen() {
       return;
     }
 
-    if (result.message) {
-      setMessage(result.message);
-    }
-
     router.replace("/(tabs)");
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingTop: 56, paddingBottom: 32 }}>
-      <Text className="mb-8 text-[30px] font-black text-textPrimary">Create your account</Text>
-      <View className="gap-4">
-        <Input label="Full Name" value={fullName} onChangeText={setFullName} />
-        <Input label="Username" value={username} onChangeText={setUsername} autoCapitalize="none" />
-        <Input label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        <Input label="Password" value={password} onChangeText={setPassword} secureTextEntry error={error} />
-        <PickerField label="Position" value={position} onChange={(value) => setPosition(value as Position)} options={positions} />
-        <PickerField label="Skill Level" value={skillLevel} onChange={(value) => setSkillLevel(value as Profile["skill_level"])} options={skills} />
-        <PickerField label="City" value={city} onChange={setCity} options={cities} />
+    <ScrollView style={layout.screen} contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Create your account</Text>
 
-        <Card className="border-primaryBorder bg-primaryLight">
-          <Text className="text-[14px] leading-6 text-primary">
-            Your Reliability Score starts at 80/100. Show up, pay on time, and be a good teammate to earn Elite status.
-          </Text>
-        </Card>
+      <Card style={styles.formCard}>
+        <Input label="Full Name" onChangeText={setFullName} value={fullName} />
+        <Input autoCapitalize="none" label="Username" onChangeText={setUsername} value={username} />
+        <Input autoCapitalize="none" keyboardType="email-address" label="Email" onChangeText={setEmail} value={email} />
+        <Input error={error} label="Password" onChangeText={setPassword} secureTextEntry value={password} />
+        <PickerField label="Position" value={position} options={positions} onChange={(value) => setPosition(value as Position)} />
+        <PickerField
+          label="Skill Level"
+          value={skillLevel}
+          options={skills}
+          onChange={(value) => setSkillLevel(value as Profile["skill_level"])}
+        />
+        <PickerField label="City" value={city} options={cities} onChange={setCity} />
 
-        {message ? <Text className="text-[13px] text-primary">{message}</Text> : null}
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>Your Reliability Score starts at 80/100</Text>
+        </View>
 
-        <Button title="Create Account — It's Free" onPress={handleSignUp} loading={loading} />
-        <Text className="text-center text-[14px] text-textSecondary" onPress={() => router.push("/auth/login")}>
-          Already have an account? <Text className="font-bold text-primary">Sign in</Text>
+        {message ? <Text style={styles.message}>{message}</Text> : null}
+
+        <Button title="Create Account" loading={loading} onPress={handleSignup} />
+      </Card>
+
+      <Pressable onPress={() => router.push("/auth/login")} style={styles.signInLink}>
+        <Text style={styles.signInText}>
+          Already have an account? <Text style={styles.signInStrong}>Sign in</Text>
         </Text>
-      </View>
+      </Pressable>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    paddingTop: 56,
+    paddingBottom: 36,
+    gap: 18,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: colors.textPrimary,
+  },
+  formCard: {
+    gap: 14,
+  },
+  pickerLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    marginBottom: 6,
+  },
+  pickerShell: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  infoBox: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryBorder,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+  },
+  infoText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  message: {
+    color: colors.primary,
+    fontSize: 13,
+  },
+  signInLink: {
+    alignItems: "center",
+  },
+  signInText: {
+    ...typography.caption,
+  },
+  signInStrong: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+});

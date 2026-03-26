@@ -1,21 +1,50 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { colors } from "@/constants/colors";
 
 type AvatarProps = {
   initials: string;
   size?: "sm" | "md" | "lg";
 };
 
-export function Avatar({ initials, size = "md" }: AvatarProps) {
-  const sizes = {
-    sm: "h-9 w-9 text-[12px]",
-    md: "h-12 w-12 text-[14px]",
-    lg: "h-16 w-16 text-[18px]",
-  } as const;
+const sizeMap = {
+  sm: { fontSize: 12 },
+  md: { fontSize: 14 },
+  lg: { fontSize: 18 },
+} as const;
 
+export function Avatar({ initials, size = "md" }: AvatarProps) {
   return (
-    <View className={`items-center justify-center rounded-full border border-primaryBorder bg-primaryLight ${sizes[size]}`}>
-      <Text className="font-extrabold text-primary">{initials}</Text>
+    <View style={[styles.base, size === "sm" && styles.sm, size === "md" && styles.md, size === "lg" && styles.lg]}>
+      <Text style={[styles.text, { fontSize: sizeMap[size].fontSize }]}>{initials}</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  base: {
+    borderRadius: 100,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  text: {
+    fontWeight: "800",
+    color: colors.primary,
+  },
+  sm: {
+    width: 36,
+    height: 36,
+  },
+  md: {
+    width: 48,
+    height: 48,
+  },
+  lg: {
+    width: 64,
+    height: 64,
+  },
+});

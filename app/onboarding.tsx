@@ -1,107 +1,163 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
-import { Dimensions, FlatList, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import {
+  Dimensions,
+  FlatList,
+  ListRenderItemInfo,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { Button } from "@/components/ui/Button";
+import { colors } from "@/constants/colors";
+import { layout, typography } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
 
 const { width } = Dimensions.get("window");
 
 const slides = [
   {
-    id: "1",
+    key: "1",
     emoji: "⚽",
-    titleStart: "Stop Chasing People on WhatsApp",
-    titleHighlight: "KickOff",
-    titleEnd: "",
+    title: "Stop Chasing People on WhatsApp",
     subtitle: "Find matches, build teams, book turfs — one free Kenyan app.",
-    button: "Get Started — It's Free",
+    buttonLabel: "Get Started — It's Free",
   },
   {
-    id: "2",
+    key: "2",
     emoji: "🏟️",
-    titleStart: "Games Every Day Across Kenya",
-    titleHighlight: "",
-    titleEnd: "",
+    title: "Games Every Day Across Kenya",
     subtitle: "Nairobi, Mombasa, Kisumu. Find a match near you in seconds.",
-    button: "Next",
+    buttonLabel: "Next",
   },
   {
-    id: "3",
+    key: "3",
     emoji: "📱",
-    titleStart: "Pay via M-Pesa, Play Today",
-    titleHighlight: "",
-    titleEnd: "",
+    title: "Pay via M-Pesa, Play Today",
     subtitle: "No payment, no slot. Everyone who shows up has already paid.",
-    button: "Get Started — It's Free",
+    buttonLabel: "Get Started — It's Free",
   },
-];
+] as const;
 
 export default function OnboardingScreen() {
+  const flatListRef = useRef<FlatList<(typeof slides)[number]>>(null);
   const router = useRouter();
   const { completeOnboarding } = useApp();
   const [activeIndex, setActiveIndex] = useState(0);
-  const listRef = useRef<FlatList>(null);
 
-  const handlePrimary = async () => {
-    if (activeIndex === 1) {
-      listRef.current?.scrollToIndex({ index: 2, animated: true });
-      return;
-    }
-
+  const finishOnboarding = async () => {
     await completeOnboarding();
     await AsyncStorage.setItem("onboarding_complete", "true");
     router.replace("/auth/signup");
   };
 
+  const handlePrimaryAction = async () => {
+    if (activeIndex === 1) {
+      flatListRef.current?.scrollToIndex({ index: 2, animated: true });
+      return;
+    }
+
+    await finishOnboarding();
+  };
+
+  const renderSlide = ({ item }: ListRenderItemInfo<(typeof slides)[number]>) => (
+    <View style={styles.slide}>
+      <View style={styles.slideContent}>
+        <Text style={styles.emoji}>{item.emoji}</Text>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.subtitle}>{item.subtitle}</Text>
+      </View>
+    </View>
+  );
+
   return (
-    <View className="flex-1 bg-background px-6 pb-10 pt-16">
+    <View style={layout.screen}>
       <FlatList
-        ref={listRef}
+        ref={flatListRef}
         data={slides}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.key}
+        renderItem={renderSlide}
         onMomentumScrollEnd={(event) => {
           const index = Math.round(event.nativeEvent.contentOffset.x / width);
           setActiveIndex(index);
         }}
-        renderItem={({ item }) => (
-          <View style={{ width: width - 48 }} className="justify-center">
-            <Animated.View entering={FadeInDown.duration(500)} className="gap-6">
-              <Text className="text-center text-[72px]">{item.emoji}</Text>
-              <View className="gap-4">
-                <Text className="text-center text-[34px] font-black leading-[40px] text-textPrimary">
-                  {item.titleStart}{" "}
-                  {item.titleHighlight ? <Text className="text-primary">{item.titleHighlight}</Text> : null}
-                  {item.titleEnd}
-                </Text>
-                <Text className="text-center text-[16px] leading-7 text-textSecondary">{item.subtitle}</Text>
-              </View>
-            </Animated.View>
-          </View>
-        )}
       />
 
-      <View className="gap-5">
-        <View className="flex-row justify-center gap-2">
+      <View style={styles.footer}>
+        <View style={styles.dotsRow}>
           {slides.map((slide, index) => (
-            <View
-              key={slide.id}
-              className={`h-2 rounded-pill ${index === activeIndex ? "w-8 bg-primary" : "w-2 bg-border"}`}
-            />
+            <View key={slide.key} style={[styles.dot, index === activeIndex && styles.activeDot]} />
           ))}
         </View>
-
-        <Button title={slides[activeIndex].button} onPress={handlePrimary} />
-
-        <Text className="text-center text-[14px] text-textSecondary" onPress={() => router.push("/auth/login")}>
-          Already have an account? <Text className="font-bold text-primary">Sign in</Text>
-        </Text>
+        <Button title={slides[activeIndex]?.buttonLabel ?? "Get Started"} onPress={handlePrimaryAction} />
+        <Pressable onPress={() => router.push("/auth/login")} style={styles.signInLink}>
+          <Text style={styles.signInText}>Already have an account? Sign in</Text>
+        </Pressable>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  slide: {
+    width,
+    paddingHorizontal: 28,
+    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+  slideContent: {
+    alignItems: "center",
+    gap: 16,
+  },
+  emoji: {
+    fontSize: 72,
+  },
+  title: {
+    ...typography.h1,
+    fontSize: 32,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.textSecondary,
+    textAlign: "center",
+    maxWidth: 300,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingBottom: 28,
+    gap: 14,
+    backgroundColor: colors.background,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: colors.primaryBorder,
+  },
+  activeDot: {
+    width: 26,
+    backgroundColor: colors.primary,
+  },
+  signInLink: {
+    alignItems: "center",
+  },
+  signInText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+});

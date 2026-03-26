@@ -2,116 +2,239 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { MatchCard } from "@/components/matches/MatchCard";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { colors } from "@/constants/colors";
+import { layout } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
-import { getFirstName, getGreeting } from "@/lib/utils";
+import { getFirstName, getGreeting, getReliabilityMeta } from "@/lib/utils";
 
-const FIRST_MATCH_TOOLTIP_DISMISSED_KEY = "first_match_tooltip_dismissed";
-
-const quickActions = [
-  { label: "Create Match", icon: "plus-circle", route: "/matches/create" as const },
-  { label: "Book Turf", icon: "map-pin", route: "/(tabs)/turfs" as const },
-  { label: "My Teams", icon: "users", route: "/(tabs)/teams" as const },
-];
+const FIRST_JOIN_TOOLTIP_KEY = "home_first_join_tooltip_dismissed";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { profile, matches, refreshData, hasJoinedMatch } = useApp();
+  const { matches, profile, refreshData, hasJoinedMatch } = useApp();
+  const [refreshing, setRefreshing] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const openMatches = useMemo(() => matches.filter((match) => match.status === "Open").slice(0, 3), [matches]);
+  const nearbyMatches = useMemo(() => matches.slice(0, 3), [matches]);
+  const reliabilityMeta = getReliabilityMeta(profile?.reliability_score ?? 80);
 
   useEffect(() => {
-    const loadTooltip = async () => {
-      const dismissed = await AsyncStorage.getItem(FIRST_MATCH_TOOLTIP_DISMISSED_KEY);
-      setShowTooltip(!hasJoinedMatch && dismissed !== "true");
+    let mounted = true;
+    AsyncStorage.getItem(FIRST_JOIN_TOOLTIP_KEY).then((value) => {
+      if (mounted && !hasJoinedMatch && value !== "true") setShowTooltip(true);
+    });
+
+    return () => {
+      mounted = false;
     };
-
-    loadTooltip().catch(() => undefined);
   }, [hasJoinedMatch]);
-
-  if (!profile) return null;
 
   const dismissTooltip = async () => {
     setShowTooltip(false);
-    await AsyncStorage.setItem(FIRST_MATCH_TOOLTIP_DISMISSED_KEY, "true");
+    await AsyncStorage.setItem(FIRST_JOIN_TOOLTIP_KEY, "true");
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshData();
+    setRefreshing(false);
+  };
+
+  const quickActions = [
+    { label: "Create Match", icon: "plus", onPress: () => router.push("/matches/create") },
+    { label: "Book Turf", icon: "map-pin", onPress: () => router.push("/(tabs)/turfs") },
+    { label: "My Teams", icon: "users", onPress: () => router.push("/(tabs)/teams") },
+    { label: "Leaderboard", icon: "award", onPress: () => router.push("/leaderboard") },
+  ] as const;
+
+  const stats = [
+    { label: "Matches", value: profile?.matches ?? 0 },
+    { label: "Wins", value: profile?.wins ?? 0 },
+    { label: "Goals", value: profile?.goals ?? 0 },
+    { label: "Rating", value: profile?.rating ?? 0 },
+  ];
+
   return (
-    <View className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 24, paddingTop: 56, paddingBottom: 120 }}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refreshData} tintColor="#186637" />}
-      >
-        <ScreenHeader
-          title={`${getGreeting()}, ${getFirstName(profile.full_name)} ☀️`}
-          subtitle={`${profile.city} · ${matches.filter((match) => match.status === "Open").length} open near you`}
-        />
+    <ScrollView
+      style={layout.screen}
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+    >
+      <View>
+        <Text style={styles.greeting}>
+          {getGreeting()}, {getFirstName(profile?.full_name)}
+        </Text>
+        <Text style={styles.city}>{profile?.city ?? "Kenya"}</Text>
+      </View>
 
-        {showTooltip ? (
-          <Pressable onPress={dismissTooltip} className="mb-4 rounded-lgCard border border-primaryBorder bg-primaryLight px-4 py-3">
-            <Text className="text-[14px] font-semibold text-primary">👆 Tap any match card to join your first game</Text>
-          </Pressable>
-        ) : null}
-
-        <View className="mb-5">
-          <Button title="Find a Game Now →" onPress={() => router.push("/(tabs)/matches")} className="shadow-card" />
+      <View style={styles.statsCard}>
+        <View style={styles.statsHeader}>
+          <View>
+            <Text style={styles.statsName}>{profile?.full_name ?? "KickOff Player"}</Text>
+            <Text style={styles.statsTier}>
+              {reliabilityMeta.badge} · Reliability {profile?.reliability_score ?? 80}
+            </Text>
+          </View>
         </View>
-
-        <View className="mb-4">
-          <Text className="text-[22px] font-black text-textPrimary">Open matches</Text>
+        <View style={styles.statsGrid}>
+          {stats.map((item) => (
+            <View key={item.label} style={styles.statCell}>
+              <Text style={styles.statValue}>{item.value}</Text>
+              <Text style={styles.statLabel}>{item.label}</Text>
+            </View>
+          ))}
         </View>
+      </View>
 
-        <View className="gap-4">
-          {openMatches.map((match) => (
+      {showTooltip ? (
+        <Pressable onPress={dismissTooltip} style={styles.tooltip}>
+          <Text style={styles.tooltipText}>Tap any match card to join your first game.</Text>
+        </Pressable>
+      ) : null}
+
+      <Button title="Find a Game Now →" onPress={() => router.push("/(tabs)/matches")} />
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Open Near You</Text>
+        <View style={styles.list}>
+          {nearbyMatches.map((match) => (
             <MatchCard key={match.id} match={match} />
           ))}
         </View>
+      </View>
 
-        <View className="mt-8 mb-4">
-          <Text className="text-[22px] font-black text-textPrimary">Quick actions</Text>
-        </View>
-
-        <View className="mb-8 flex-row flex-wrap justify-between gap-y-3">
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.actionGrid}>
           {quickActions.map((action) => (
-            <Card key={action.label} className="w-[48%] p-0">
-              <Pressable onPress={() => router.push(action.route)} className="px-4 py-5">
-                <Text className="text-[15px] font-bold text-textPrimary">
-                  <Feather name={action.icon as never} size={16} color="#186637" /> {action.label}
-                </Text>
-              </Pressable>
-            </Card>
+            <Pressable key={action.label} onPress={action.onPress} style={styles.actionCard}>
+              <View style={styles.actionIconWrap}>
+                <Feather color={colors.primary} name={action.icon} size={18} />
+              </View>
+              <Text style={styles.actionText}>{action.label}</Text>
+            </Pressable>
           ))}
         </View>
-
-        <Card className="gap-4">
-          <Text className="text-[13px] font-semibold text-textSecondary">Your stats this month</Text>
-          <Text className="text-[24px] font-black text-textPrimary">{profile.full_name}</Text>
-          <View className="flex-row justify-between">
-            {[
-              { label: "Matches", value: profile.matches },
-              { label: "Wins", value: profile.wins },
-              { label: "Goals", value: profile.goals },
-              { label: "Rating", value: profile.rating },
-            ].map((stat) => (
-              <View key={stat.label}>
-                <Text className="text-[12px] text-textHint">{stat.label}</Text>
-                <Text className="mt-1 text-[18px] font-black text-textPrimary">{stat.value}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
-      </ScrollView>
-
-      <View className="absolute inset-x-0 bottom-0 border-t border-border bg-card px-6 py-4">
-        <Button title="Find a Game Now →" onPress={() => router.push("/(tabs)/matches")} />
       </View>
-    </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    paddingTop: 56,
+    paddingBottom: 32,
+    gap: 20,
+  },
+  greeting: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: colors.textPrimary,
+  },
+  city: {
+    marginTop: 4,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  statsCard: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    padding: 20,
+    gap: 20,
+  },
+  statsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  statsName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: colors.white,
+  },
+  statsTier: {
+    marginTop: 4,
+    fontSize: 14,
+    color: colors.white,
+    opacity: 0.88,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 16,
+  },
+  statCell: {
+    width: "25%",
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: colors.white,
+  },
+  statLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.white,
+    opacity: 0.82,
+  },
+  tooltip: {
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    borderRadius: 14,
+    padding: 16,
+  },
+  tooltipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+  section: {
+    gap: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.textPrimary,
+  },
+  list: {
+    gap: 12,
+  },
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  actionCard: {
+    width: "48%",
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    shadowColor: "#1A1A18",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    gap: 12,
+  },
+  actionIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+});

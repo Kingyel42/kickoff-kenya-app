@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -7,6 +7,8 @@ import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { colors } from "@/constants/colors";
+import { layout } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
 import { RatingSelection } from "@/lib/types";
 
@@ -33,14 +35,18 @@ function RatingPill({
     <Animated.View style={animatedStyle}>
       <Pressable
         onPress={() => {
-          scale.value = withSpring(1.1, { damping: 8 }, () => {
+          scale.value = withSpring(1.08, { damping: 8 }, () => {
             scale.value = withSpring(1);
           });
           onPress();
         }}
-        className={`rounded-pill px-4 py-2 ${active ? (tone === "up" ? "bg-primary" : "bg-error") : "bg-surface"}`}
+        style={[
+          styles.ratingPill,
+          active && tone === "up" && styles.ratingPillUpActive,
+          active && tone === "down" && styles.ratingPillDownActive,
+        ]}
       >
-        <Text className={`font-bold ${active ? "text-card" : "text-textSecondary"}`}>{label}</Text>
+        <Text style={[styles.ratingPillText, active && styles.ratingPillTextActive]}>{label}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -67,10 +73,10 @@ export default function RatePlayersScreen() {
 
   if (submitted) {
     return (
-      <View className="flex-1 items-center justify-center bg-background px-6">
-        <Text className="text-[56px] text-primary">✓</Text>
-        <Text className="mt-4 text-center text-[26px] font-black text-textPrimary">Thanks for rating! Your score has been updated.</Text>
-        <View className="mt-8 w-full">
+      <View style={[layout.screen, styles.submittedScreen]}>
+        <Text style={styles.submittedMark}>✓</Text>
+        <Text style={styles.submittedTitle}>Thanks for rating! Your score has been updated.</Text>
+        <View style={styles.submittedButtonWrap}>
           <Button title="Back to Home" onPress={() => router.replace("/(tabs)")} />
         </View>
       </View>
@@ -78,29 +84,29 @@ export default function RatePlayersScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingTop: 56, paddingBottom: 32 }}>
+    <ScrollView style={layout.screen} contentContainerStyle={styles.container}>
       <ScreenHeader title="Rate Your Teammates" subtitle={match.title} showBack />
 
-      <Text className="text-[14px] font-semibold text-textSecondary">
+      <Text style={styles.progressText}>
         Rated {ratedCount} of {teammates.length} players
       </Text>
-      <View className="mt-3 h-2 overflow-hidden rounded-pill bg-primaryLight">
-        <View className="h-2 rounded-pill bg-primary" style={{ width: `${progress}%` }} />
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
 
-      <Card className="mt-4 border-primaryBorder bg-primaryLight">
-        <Text className="text-[14px] leading-6 text-primary">
-          Your ratings directly affect player reliability scores. Rate honestly — the community depends on it.
+      <Card style={styles.infoCard}>
+        <Text style={styles.infoText}>
+          Your ratings directly affect player reliability scores. Rate honestly, the community depends on it.
         </Text>
       </Card>
 
-      <View className="mt-4 gap-4">
+      <View style={styles.playerList}>
         {teammates.map((player) => (
-          <Card key={player.id} className="gap-3">
-            <View className="flex-row items-center gap-3">
+          <Card key={player.id} style={styles.playerCard}>
+            <View style={styles.playerRow}>
               <Avatar initials={player.initials} />
-              <Text className="flex-1 text-[15px] font-bold text-textPrimary">{player.full_name}</Text>
-              <View className="flex-row gap-2">
+              <Text style={styles.playerName}>{player.full_name}</Text>
+              <View style={styles.pillRow}>
                 <RatingPill
                   label="👍"
                   tone="up"
@@ -119,33 +125,37 @@ export default function RatePlayersScreen() {
         ))}
       </View>
 
-      <View className="mt-6">
-        <Text className="mb-3 text-[18px] font-bold text-textPrimary">Tag what stood out</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {positiveTags.map((tag) => (
-            <Pressable
-              key={tag}
-              onPress={() => setTags((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]))}
-              className={`rounded-pill border px-4 py-2 ${
-                tags.includes(tag) ? "border-primaryBorder bg-primaryLight" : "border-border bg-card"
-              }`}
-            >
-              <Text className={`text-[13px] font-semibold ${tags.includes(tag) ? "text-primary" : "text-textSecondary"}`}>{tag}</Text>
-            </Pressable>
-          ))}
-          {negativeTags.map((tag) => (
-            <Pressable
-              key={tag}
-              onPress={() => setTags((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]))}
-              className={`rounded-pill border px-4 py-2 ${tags.includes(tag) ? "border-error bg-surface" : "border-border bg-card"}`}
-            >
-              <Text className={`text-[13px] font-semibold ${tags.includes(tag) ? "text-error" : "text-textSecondary"}`}>{tag}</Text>
-            </Pressable>
-          ))}
+      <View style={styles.tagsSection}>
+        <Text style={styles.tagsTitle}>Tag what stood out</Text>
+        <View style={styles.tagsWrap}>
+          {positiveTags.map((tag) => {
+            const active = tags.includes(tag);
+            return (
+              <Pressable
+                key={tag}
+                onPress={() => setTags((prev) => (active ? prev.filter((item) => item !== tag) : [...prev, tag]))}
+                style={[styles.tag, active ? styles.positiveTagActive : styles.tagDefault]}
+              >
+                <Text style={[styles.tagText, active && styles.positiveTagTextActive]}>{tag}</Text>
+              </Pressable>
+            );
+          })}
+          {negativeTags.map((tag) => {
+            const active = tags.includes(tag);
+            return (
+              <Pressable
+                key={tag}
+                onPress={() => setTags((prev) => (active ? prev.filter((item) => item !== tag) : [...prev, tag]))}
+                style={[styles.tag, active ? styles.negativeTagActive : styles.tagDefault]}
+              >
+                <Text style={[styles.tagText, active && styles.negativeTagTextActive]}>{tag}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
-      <View className="mt-6">
+      <View style={styles.submitWrap}>
         <Button
           title={`Submit ${ratedCount} Rating${ratedCount === 1 ? "" : "s"}`}
           disabled={ratedCount < 1}
@@ -158,3 +168,145 @@ export default function RatePlayersScreen() {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    paddingTop: 56,
+    paddingBottom: 32,
+  },
+  submittedScreen: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+  submittedMark: {
+    fontSize: 56,
+    color: colors.primary,
+  },
+  submittedTitle: {
+    marginTop: 16,
+    fontSize: 26,
+    fontWeight: "900",
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
+  submittedButtonWrap: {
+    marginTop: 32,
+    width: "100%",
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  progressTrack: {
+    marginTop: 12,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+  },
+  infoCard: {
+    marginTop: 16,
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryBorder,
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.primary,
+  },
+  playerList: {
+    marginTop: 16,
+    gap: 16,
+  },
+  playerCard: {
+    gap: 12,
+  },
+  playerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  playerName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  pillRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  ratingPill: {
+    borderRadius: 100,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.surface,
+  },
+  ratingPillUpActive: {
+    backgroundColor: colors.primary,
+  },
+  ratingPillDownActive: {
+    backgroundColor: colors.error,
+  },
+  ratingPillText: {
+    fontWeight: "700",
+    color: colors.textSecondary,
+  },
+  ratingPillTextActive: {
+    color: colors.white,
+  },
+  tagsSection: {
+    marginTop: 24,
+  },
+  tagsTitle: {
+    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.textPrimary,
+  },
+  tagsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tag: {
+    borderRadius: 100,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  tagDefault: {
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  positiveTagActive: {
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primaryLight,
+  },
+  negativeTagActive: {
+    borderColor: colors.error,
+    backgroundColor: colors.surface,
+  },
+  tagText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  positiveTagTextActive: {
+    color: colors.primary,
+  },
+  negativeTagTextActive: {
+    color: colors.error,
+  },
+  submitWrap: {
+    marginTop: 24,
+  },
+});

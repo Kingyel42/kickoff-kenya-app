@@ -1,83 +1,168 @@
-import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
+import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { colors } from "@/constants/colors";
+import { layout, typography } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
+import { TurfFilter } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 
-const filters = ["All", "Available Now", "Floodlit", "Indoor"];
+const filters: TurfFilter[] = ["All", "Available Now", "Floodlit", "Indoor"];
 
 export default function TurfsScreen() {
-  const router = useRouter();
-  const { turfs } = useApp();
-  const [filter, setFilter] = useState("All");
+  const { turfs, profile } = useApp();
+  const [filter, setFilter] = useState<TurfFilter>("All");
 
-  const filtered = useMemo(() => {
-    if (filter === "Available Now") return turfs.filter((turf) => turf.available_now);
-    if (filter === "Floodlit") return turfs.filter((turf) => turf.floodlit);
-    if (filter === "Indoor") return turfs.filter((turf) => turf.indoor);
-    return turfs;
+  const visibleTurfs = useMemo(() => {
+    return turfs.filter((turf) => {
+      if (filter === "All") return true;
+      if (filter === "Available Now") return turf.available_now;
+      if (filter === "Floodlit") return turf.floodlit;
+      return turf.indoor;
+    });
   }, [filter, turfs]);
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingTop: 56, paddingBottom: 32 }}>
-      <ScreenHeader title="Turfs" />
+    <ScrollView style={layout.screen} contentContainerStyle={styles.container}>
+      <Text style={typography.h1}>Turfs</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5">
-        <View className="flex-row gap-2">
-          {filters.map((item) => (
-            <Text
-              key={item}
-              onPress={() => setFilter(item)}
-              className={`rounded-pill border px-4 py-2 font-bold ${
-                item === filter ? "border-primaryBorder bg-primaryLight text-primary" : "border-border bg-card text-textSecondary"
-              }`}
-            >
-              {item}
-            </Text>
-          ))}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.filterRow}>
+          {filters.map((item) => {
+            const active = item === filter;
+            return (
+              <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filterPill, active && styles.filterPillActive]}>
+                <Text style={[styles.filterText, active && styles.filterTextActive]}>{item}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
 
-      <View className="gap-4">
-        {filtered.length ? (
-          filtered.map((turf) => (
-            <Pressable key={turf.id} onPress={() => router.push(`/turfs/${turf.id}`)}>
-              <Card className="gap-4">
-                <View className="h-32 items-center justify-center rounded-smCard bg-primary">
-                  <Text className="text-[40px] text-card">🏟️</Text>
-                </View>
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1">
-                    <Text className="text-[16px] font-bold text-textPrimary">{turf.name}</Text>
-                    <Text className="mt-1 text-[13px] text-textSecondary">{turf.location}</Text>
-                  </View>
-                  <Text className="text-[13px] font-bold text-primary">★ {turf.rating}</Text>
-                </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-[13px] text-textSecondary">{formatCurrency(turf.price_per_hour)}/hour</Text>
-                  <View className="flex-row flex-wrap justify-end gap-2">
-                    {turf.amenities.map((amenity) => (
-                      <Text key={amenity} className="rounded-pill bg-surface px-3 py-1 text-[12px] font-semibold text-textSecondary">
-                        {amenity}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-              </Card>
-            </Pressable>
-          ))
-        ) : (
-          <Card className="items-center gap-3 py-8">
-            <Text className="text-center text-[20px] font-black text-textPrimary">No turfs listed yet in your city</Text>
-            <Text className="text-center text-[14px] leading-6 text-textSecondary">
-              You can still create a match with a custom location
-            </Text>
+      {visibleTurfs.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No turfs listed yet in your city</Text>
+          <Text style={styles.emptyText}>You can still create a match with a custom location</Text>
+        </View>
+      ) : (
+        visibleTurfs.map((turf) => (
+          <Card key={turf.id} style={styles.turfCard}>
+            <View style={styles.imagePlaceholder}>
+              <Text style={styles.imageIcon}>⚽</Text>
+            </View>
+            <Text style={styles.turfName}>{turf.name}</Text>
+            <Text style={styles.turfLocation}>{turf.location}</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoText}>⭐ {turf.rating}</Text>
+              <Text style={styles.infoPrice}>{formatCurrency(turf.price_per_hour)}/hr</Text>
+            </View>
+            <View style={styles.amenitiesRow}>
+              {turf.amenities.map((amenity) => (
+                <Badge key={amenity} label={amenity} tone="neutral" />
+              ))}
+            </View>
           </Card>
-        )}
-      </View>
+        ))
+      )}
+
+      {profile ? <Text style={styles.footerNote}>Showing turf suggestions near {profile.city}</Text> : null}
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    paddingTop: 56,
+    paddingBottom: 30,
+    gap: 18,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingRight: 12,
+  },
+  filterPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  filterPillActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryBorder,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textSecondary,
+  },
+  filterTextActive: {
+    color: colors.primary,
+  },
+  emptyState: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    padding: 20,
+    gap: 10,
+  },
+  emptyTitle: {
+    ...typography.h3,
+  },
+  emptyText: {
+    ...typography.body,
+  },
+  turfCard: {
+    gap: 12,
+  },
+  imagePlaceholder: {
+    height: 140,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageIcon: {
+    fontSize: 36,
+    color: colors.white,
+  },
+  turfName: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.textPrimary,
+  },
+  turfLocation: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  infoPrice: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: colors.primary,
+  },
+  amenitiesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  footerNote: {
+    ...typography.caption,
+    textAlign: "center",
+  },
+});

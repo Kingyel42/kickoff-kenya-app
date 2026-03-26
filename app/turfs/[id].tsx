@@ -1,10 +1,12 @@
 import { useLocalSearchParams } from "expo-router";
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { colors } from "@/constants/colors";
+import { layout } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
 import { formatCurrency } from "@/lib/utils";
 
@@ -16,25 +18,76 @@ export default function TurfDetailScreen() {
   if (!turf) return null;
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingTop: 56, paddingBottom: 32 }}>
+    <ScrollView style={layout.screen} contentContainerStyle={styles.container}>
       <ScreenHeader title={turf.name} subtitle={turf.location} showBack />
-      <View className="mb-4 h-44 items-center justify-center rounded-lgCard bg-primary">
-        <Text className="text-[56px] text-card">🏟️</Text>
+      <View style={styles.hero}>
+        <Text style={styles.heroIcon}>🏟️</Text>
       </View>
-      <Card className="gap-3">
-        <Text className="text-[18px] font-bold text-textPrimary">Overview</Text>
-        <Text className="text-[14px] text-textSecondary">Star rating {turf.rating} · {formatCurrency(turf.price_per_hour)} per hour</Text>
-        <View className="flex-row flex-wrap gap-2">
+      <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Overview</Text>
+        <Text style={styles.overviewText}>
+          Star rating {turf.rating} · {formatCurrency(turf.price_per_hour)} per hour
+        </Text>
+        <View style={styles.amenitiesRow}>
           {turf.amenities.map((amenity) => (
-            <Text key={amenity} className="rounded-pill bg-surface px-3 py-1 text-[12px] font-semibold text-textSecondary">
+            <Text key={amenity} style={styles.amenityPill}>
               {amenity}
             </Text>
           ))}
         </View>
       </Card>
-      <View className="mt-5">
+      <View style={styles.buttonWrap}>
         <Button title="Book This Turf" />
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    paddingTop: 56,
+    paddingBottom: 32,
+  },
+  hero: {
+    marginBottom: 16,
+    height: 176,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroIcon: {
+    fontSize: 56,
+    color: colors.white,
+  },
+  card: {
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.textPrimary,
+  },
+  overviewText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  amenitiesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  amenityPill: {
+    borderRadius: 100,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  buttonWrap: {
+    marginTop: 20,
+  },
+});

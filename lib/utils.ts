@@ -1,5 +1,6 @@
-import { MatchFormat, ReliabilityTier } from "./types";
 import { colors } from "@/constants/colors";
+
+import { MatchFormat, ReliabilityTier } from "./types";
 
 export const formatCurrency = (value: number) => `KSh ${Math.round(value).toLocaleString()}`;
 
@@ -28,10 +29,10 @@ export const getGreeting = () => {
 };
 
 export const getReliabilityMeta = (score: number): { tier: ReliabilityTier; badge: string; color: string } => {
-  if (score >= 90) return { tier: "Elite", badge: "⭐ Elite", color: colors.primary };
-  if (score >= 70) return { tier: "Good", badge: "✓ Good", color: colors.good };
-  if (score >= 50) return { tier: "Caution", badge: "⚠ Caution", color: colors.warning };
-  return { tier: "Restricted", badge: "✗ Restricted", color: colors.error };
+  if (score >= 90) return { tier: "Elite", badge: "Elite", color: colors.primary };
+  if (score >= 70) return { tier: "Good", badge: "Good", color: colors.good };
+  if (score >= 50) return { tier: "Caution", badge: "Caution", color: colors.warning };
+  return { tier: "Restricted", badge: "Restricted", color: colors.error };
 };
 
 export const calculatePricing = (totalCost: number, maxPlayers: number) => {
@@ -57,3 +58,10 @@ export const minutesUntil = (date: string, startTime: string) => {
   const matchStart = new Date(`${date}T${startTime}:00`);
   return Math.max(0, Math.floor((matchStart.getTime() - Date.now()) / 60000));
 };
+
+export const formatDateLabel = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString("en-KE", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });

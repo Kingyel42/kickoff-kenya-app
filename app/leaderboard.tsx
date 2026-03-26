@@ -1,15 +1,18 @@
 import React, { useMemo, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { Avatar } from "@/components/ui/Avatar";
+import { Card } from "@/components/ui/Card";
+import { colors } from "@/constants/colors";
+import { layout, typography } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
+import { LeaderboardFilter } from "@/lib/types";
 
-const filters = ["Top Scorers", "Most Wins", "Top Rated", "Assists"];
+const filters: LeaderboardFilter[] = ["Top Scorers", "Most Wins", "Top Rated", "Assists"];
 
 export default function LeaderboardScreen() {
   const { leaderboard, profile } = useApp();
-  const [filter, setFilter] = useState("Top Scorers");
+  const [filter, setFilter] = useState<LeaderboardFilter>("Top Scorers");
 
   const data = useMemo(
     () =>
@@ -28,47 +31,112 @@ export default function LeaderboardScreen() {
   );
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingTop: 56, paddingBottom: 32 }}>
-      <ScreenHeader title="Leaderboard" subtitle={`${profile?.city ?? "Kenya"} · This Month`} showBack />
+    <ScrollView style={layout.screen} contentContainerStyle={styles.container}>
+      <Text style={typography.h1}>Leaderboard</Text>
+      <Text style={styles.subtitle}>{profile?.city ?? "Kenya"} · This Month</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5">
-        <View className="flex-row gap-2">
-          {filters.map((item) => (
-            <Text
-              key={item}
-              onPress={() => setFilter(item)}
-              className={`rounded-pill border px-4 py-2 font-bold ${
-                item === filter ? "border-primaryBorder bg-primaryLight text-primary" : "border-border bg-card text-textSecondary"
-              }`}
-            >
-              {item}
-            </Text>
-          ))}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.filterRow}>
+          {filters.map((item) => {
+            const active = item === filter;
+            return (
+              <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filterPill, active && styles.filterPillActive]}>
+                <Text style={[styles.filterText, active && styles.filterTextActive]}>{item}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
 
-      <View className="gap-3">
+      <View style={styles.list}>
         {data.map((entry) => (
-          <View
-            key={entry.id}
-            className={`flex-row items-center rounded-lgCard border px-4 py-3 ${
-              entry.isCurrentUser ? "border-primaryBorder bg-primaryLight" : "border-border bg-card"
-            }`}
-          >
-            <Text className="w-10 text-[18px] font-black text-textPrimary">
+          <Card key={entry.id} style={[styles.row, entry.isCurrentUser && styles.currentUserRow]}>
+            <Text style={styles.rank}>
               {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : entry.rank}
             </Text>
             <Avatar initials={entry.initials} />
-            <View className="ml-3 flex-1">
-              <Text className="text-[15px] font-bold text-textPrimary">{entry.name}</Text>
-              <Text className="text-[13px] text-textSecondary">
-                {entry.position} · {entry.location}
-              </Text>
+            <View style={styles.playerBlock}>
+              <Text style={styles.playerName}>{entry.name}</Text>
+              <Text style={styles.playerMeta}>{entry.position} · {entry.location}</Text>
             </View>
-            <Text className="text-[18px] font-black text-primary">{entry.value}</Text>
-          </View>
+            <Text style={styles.value}>{entry.value}</Text>
+          </Card>
         ))}
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    paddingTop: 56,
+    paddingBottom: 32,
+    gap: 14,
+  },
+  subtitle: {
+    ...typography.body,
+    marginTop: -10,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingRight: 12,
+  },
+  filterPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  filterPillActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryBorder,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textSecondary,
+  },
+  filterTextActive: {
+    color: colors.primary,
+  },
+  list: {
+    gap: 10,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  currentUserRow: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryBorder,
+  },
+  rank: {
+    width: 38,
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.textPrimary,
+  },
+  playerBlock: {
+    flex: 1,
+  },
+  playerName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  playerMeta: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  value: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: colors.primary,
+  },
+});

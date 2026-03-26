@@ -1,16 +1,18 @@
 import React from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, ViewStyle } from "react-native";
 
 import { colors } from "@/constants/colors";
+
+type ButtonVariant = "primary" | "secondary" | "outline" | "muted" | "ghost";
 
 type ButtonProps = {
   title: string;
   onPress?: () => void;
-  variant?: "primary" | "secondary" | "ghost" | "muted" | "outline";
+  variant?: ButtonVariant;
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
-  className?: string;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function Button({
@@ -20,36 +22,74 @@ export function Button({
   disabled = false,
   loading = false,
   fullWidth = true,
-  className = "",
+  style,
 }: ButtonProps) {
-  const styles = {
-    primary: "bg-primary border-primary",
-    secondary: "bg-primaryLight border-primaryBorder",
-    ghost: "bg-transparent border-transparent",
-    muted: "bg-surface border-border",
-    outline: "bg-transparent border-primary",
-  } as const;
-
-  const textStyles = {
-    primary: "text-card",
-    secondary: "text-primary",
-    ghost: "text-primary",
-    muted: "text-textSecondary",
-    outline: "text-primary",
-  } as const;
+  const textColor = variant === "primary" ? colors.white : variant === "muted" ? colors.textSecondary : colors.primary;
 
   return (
     <Pressable
+      accessibilityRole="button"
       disabled={disabled || loading}
       onPress={onPress}
-      className={`${fullWidth ? "w-full" : ""} min-h-14 rounded-button border px-4 py-4 ${styles[variant]} ${
-        disabled ? "opacity-50" : ""
-      } ${className}`}
+      style={({ pressed }) => [
+        styles.button,
+        fullWidth && styles.fullWidth,
+        variant === "primary" && styles.primary,
+        variant === "secondary" && styles.secondary,
+        variant === "outline" && styles.outline,
+        variant === "muted" && styles.muted,
+        variant === "ghost" && styles.ghost,
+        (disabled || loading) && styles.disabled,
+        pressed && !(disabled || loading) && styles.pressed,
+        style,
+      ]}
     >
-      <View className="flex-row items-center justify-center gap-2">
-        {loading ? <ActivityIndicator color={variant === "primary" ? colors.card : colors.primary} /> : null}
-        <Text className={`text-center text-[15px] font-extrabold ${textStyles[variant]}`}>{title}</Text>
-      </View>
+      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[styles.label, { color: textColor }]}>{title}</Text>}
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  button: {
+    minHeight: 52,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    borderWidth: 1,
+  },
+  fullWidth: {
+    width: "100%",
+  },
+  primary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  secondary: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryBorder,
+  },
+  outline: {
+    backgroundColor: "transparent",
+    borderColor: colors.primary,
+  },
+  muted: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+  },
+  ghost: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderColor: "transparent",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  disabled: {
+    opacity: 0.6,
+  },
+  pressed: {
+    opacity: 0.9,
+  },
+});

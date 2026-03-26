@@ -1,23 +1,23 @@
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { colors } from "@/constants/colors";
+import { layout, typography } from "@/constants/styles";
 import { useApp } from "@/lib/app-context";
-import { MatchFormat } from "@/lib/types";
+import { MatchFormat, MatchType, SkillLevel } from "@/lib/types";
 import { calculatePricing, formatCurrency, formatMap } from "@/lib/utils";
 
 const formats: MatchFormat[] = ["5-a-side", "6-a-side", "7-a-side", "8-a-side", "11-a-side"];
-const types = ["Pickup", "Challenge", "Tournament"];
-const skills = ["Intermediate", "Any", "Beginner", "Advanced", "Pro"];
-
+const types: MatchType[] = ["Pickup", "Challenge", "Tournament"];
+const skillLevels: SkillLevel[] = ["Intermediate", "Any", "Beginner", "Advanced", "Pro"];
 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-const PickerField = ({
+function PickerField({
   label,
   value,
   options,
@@ -27,18 +27,20 @@ const PickerField = ({
   value: string;
   options: string[];
   onChange: (value: string) => void;
-}) => (
-  <View className="gap-2">
-    <Text className="text-[13px] font-semibold text-textSecondary">{label}</Text>
-    <View className="rounded-button border border-border bg-card">
-      <Picker selectedValue={value} onValueChange={onChange}>
-        {options.map((option) => (
-          <Picker.Item key={option} label={option} value={option} />
-        ))}
-      </Picker>
+}) {
+  return (
+    <View>
+      <Text style={styles.pickerLabel}>{label}</Text>
+      <View style={styles.pickerShell}>
+        <Picker selectedValue={value} onValueChange={onChange}>
+          {options.map((option) => (
+            <Picker.Item key={option} label={option} value={option} />
+          ))}
+        </Picker>
+      </View>
     </View>
-  </View>
-);
+  );
+}
 
 export default function CreateMatchScreen() {
   const router = useRouter();
@@ -49,50 +51,50 @@ export default function CreateMatchScreen() {
   const [date, setDate] = useState(tomorrow);
   const [startTime, setStartTime] = useState("07:00");
   const [endTime, setEndTime] = useState("08:00");
-  const [totalCost, setTotalCost] = useState("0");
-  const [type, setType] = useState("Pickup");
-  const [skillLevel, setSkillLevel] = useState("Intermediate");
+  const [cost, setCost] = useState("0");
+  const [type, setType] = useState<MatchType>("Pickup");
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>("Intermediate");
   const [description, setDescription] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const maxPlayers = formatMap[format];
-  const pricing = useMemo(() => calculatePricing(Number(totalCost || 0), maxPlayers), [totalCost, maxPlayers]);
+  const pricing = useMemo(() => calculatePricing(Number(cost || 0), maxPlayers), [cost, maxPlayers]);
 
   const handleCreate = async () => {
+    if (loading) return;
+
     setLoading(true);
-    const nextMatch = await createMatch({
+    const created = await createMatch({
       title: title || "Saturday Morning Kickabout",
       format,
       location,
       date,
       start_time: startTime,
       end_time: endTime,
-      total_cost: Number(totalCost || 0),
-      type: type as "Pickup" | "Challenge" | "Tournament",
-      skill_level: skillLevel as "Any" | "Beginner" | "Intermediate" | "Advanced" | "Pro",
+      total_cost: Number(cost || 0),
+      type,
+      skill_level: skillLevel,
       max_players: maxPlayers,
       description,
     });
     setLoading(false);
-    router.replace(`/matches/${nextMatch.id}`);
+    router.replace(`/matches/${created.id}`);
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24, paddingTop: 56, paddingBottom: 32 }}>
-      <ScreenHeader title="Create Match" showBack />
+    <ScrollView style={layout.screen} contentContainerStyle={styles.container}>
+      <Text style={typography.h1}>Create Match</Text>
 
-      <View className="gap-4">
+      <Card style={styles.formCard}>
         <Input
           label="Match Title"
-          value={title}
           onChangeText={setTitle}
+          value={title}
           placeholder="Saturday Morning Kickabout"
         />
-
         <PickerField label="Format" value={format} options={formats} onChange={(value) => setFormat(value as MatchFormat)} />
-
         <PickerField
           label="Location"
           value={location}
@@ -100,53 +102,136 @@ export default function CreateMatchScreen() {
           onChange={setLocation}
         />
 
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <Input label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
+        <View style={styles.row}>
+          <View style={styles.flexOne}>
+            <Input label="Date" onChangeText={setDate} value={date} />
           </View>
-          <View className="flex-1">
-            <Input label="Start Time" value={startTime} onChangeText={setStartTime} placeholder="07:00" />
+          <View style={styles.flexOne}>
+            <Input label="Start Time" onChangeText={setStartTime} value={startTime} />
           </View>
         </View>
 
-        <Input label="Total Turf Cost" value={totalCost} onChangeText={setTotalCost} keyboardType="numeric" hint="Enter 0 to make this match free" />
+        <Input
+          label="Total Turf Cost"
+          onChangeText={setCost}
+          value={cost}
+          keyboardType="numeric"
+          hint="Enter 0 to make this match free"
+        />
 
-        <Card className="gap-2">
-          <Text className="text-[13px] font-semibold text-textSecondary">Live pricing preview</Text>
-          <Text className="text-[22px] font-black text-primary">
-            Each player pays: {Number(totalCost || 0) === 0 ? "FREE" : formatCurrency(pricing.total)}
-          </Text>
+        <View style={styles.pricingCard}>
+          <Text style={styles.pricingLabel}>Each player pays</Text>
+          <Text style={styles.pricingValue}>{Number(cost || 0) === 0 ? "FREE" : formatCurrency(pricing.total)}</Text>
           <Pressable onPress={() => setShowBreakdown((prev) => !prev)}>
-            <Text className="text-[14px] font-bold text-primary">{showBreakdown ? "Hide breakdown" : "See breakdown"}</Text>
+            <Text style={styles.breakdownToggle}>{showBreakdown ? "Hide breakdown" : "See breakdown"}</Text>
           </Pressable>
           {showBreakdown ? (
-            <View className="mt-2 gap-1">
-              <Text className="text-[14px] text-textSecondary">Total turf cost: {formatCurrency(Number(totalCost || 0))}</Text>
-              <Text className="text-[14px] text-textSecondary">Max players: {maxPlayers}</Text>
-              <Text className="text-[14px] text-textSecondary">Cost per player: {formatCurrency(pricing.share)}</Text>
-              <Text className="text-[14px] text-textSecondary">Platform fee (10%): {formatCurrency(pricing.fee)}</Text>
+            <View style={styles.breakdownList}>
+              <Text style={styles.breakdownRow}>Total turf cost: {formatCurrency(Number(cost || 0))}</Text>
+              <Text style={styles.breakdownRow}>Max players: {maxPlayers}</Text>
+              <Text style={styles.breakdownRow}>Cost per player: {formatCurrency(pricing.share)}</Text>
+              <Text style={styles.breakdownRow}>Platform fee (10%): {formatCurrency(pricing.fee)}</Text>
             </View>
           ) : null}
-        </Card>
+        </View>
 
-        <Card className="gap-3">
-          <Pressable onPress={() => setShowAdvanced((prev) => !prev)} className="flex-row items-center justify-between">
-            <Text className="text-[16px] font-bold text-textPrimary">Advanced Options</Text>
-            <Text className="text-[16px] font-bold text-primary">{showAdvanced ? "Hide" : "Show"}</Text>
+        <Card style={styles.advancedCard}>
+          <Pressable onPress={() => setShowAdvanced((prev) => !prev)} style={styles.advancedHeader}>
+            <Text style={typography.h3}>Advanced Options</Text>
+            <Text style={styles.breakdownToggle}>{showAdvanced ? "Hide" : "Show"}</Text>
           </Pressable>
-
           {showAdvanced ? (
-            <View className="gap-4">
-              <PickerField label="Match Type" value={type} options={types} onChange={setType} />
-              <PickerField label="Skill Level" value={skillLevel} options={skills} onChange={setSkillLevel} />
-              <Input label="End Time" value={endTime} onChangeText={setEndTime} placeholder="08:00" />
-              <Input label="Description" value={description} onChangeText={setDescription} multiline />
+            <View style={styles.advancedFields}>
+              <PickerField label="Match Type" value={type} options={types} onChange={(value) => setType(value as MatchType)} />
+              <PickerField
+                label="Skill Level"
+                value={skillLevel}
+                options={skillLevels}
+                onChange={(value) => setSkillLevel(value as SkillLevel)}
+              />
+              <Input label="End Time" onChangeText={setEndTime} value={endTime} />
+              <Input label="Description" onChangeText={setDescription} value={description} multiline />
             </View>
           ) : null}
         </Card>
 
         <Button title="Create Match" onPress={handleCreate} loading={loading} />
-      </View>
+      </Card>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    paddingTop: 56,
+    paddingBottom: 32,
+    gap: 18,
+  },
+  formCard: {
+    gap: 14,
+  },
+  pickerLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    marginBottom: 6,
+  },
+  pickerShell: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    overflow: "hidden",
+  },
+  row: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  pricingCard: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    padding: 16,
+    gap: 8,
+  },
+  pricingLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  pricingValue: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: colors.primary,
+  },
+  breakdownToggle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  breakdownList: {
+    gap: 6,
+    marginTop: 4,
+  },
+  breakdownRow: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  advancedCard: {
+    gap: 12,
+    backgroundColor: colors.card,
+  },
+  advancedHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  advancedFields: {
+    gap: 14,
+  },
+});
